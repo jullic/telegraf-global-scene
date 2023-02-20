@@ -10,10 +10,9 @@ They also work as built-in scenes, but it becomes possible to use the listeners 
 
 `GlobalScene(sceneName, options)`
 
-## Stage 
+## Stage
 
 `GlobalStage(scenes)`
-
 
 ### Example
 
