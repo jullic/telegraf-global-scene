@@ -19,7 +19,7 @@ They also work as built-in scenes, but it becomes possible to use the listeners 
 
 ```code
 import { Telegraf } from 'telegraf';
-import { IGlobalSceneContext, GlobalScene, GlobalStage } from './src';
+import { IGlobalSceneContext, GlobalScene, GlobalStage } from 'telegraf-global-scene';
 import LocalSession from 'telegraf-session-local';
 
 interface ISessionState {
