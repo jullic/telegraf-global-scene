@@ -8,11 +8,10 @@ export class GlobalStage<T extends Record<string, any> = Record<string, any>> {
 
 	constructor(private readonly globalScenes: GlobalScene<T>[]) {
 		this.handler = Composer.compose([]);
-		this.getListeners();
 	}
 
 	middleware() {
-		this.handler = Composer.compose([this.handler]);
+		this.getListeners();
 		return this.handler;
 	}
 
