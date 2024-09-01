@@ -2,8 +2,11 @@ import { GlobalSceneContextScene } from './../context/global-context';
 import { Composer, Middleware, MiddlewareFn } from 'telegraf';
 import { GlobalScene } from '../scene/global-scene';
 import { IGlobalSceneContext } from '../context/global-context';
+import { BaseGlobalSceneSessionState } from '../common/types';
 
-export class GlobalStage<T extends Record<string, any> = Record<string, any>> {
+export class GlobalStage<
+	T extends BaseGlobalSceneSessionState = BaseGlobalSceneSessionState
+> {
 	private handler: MiddlewareFn<IGlobalSceneContext<T>>;
 
 	constructor(private readonly globalScenes: GlobalScene<T>[]) {
@@ -83,9 +86,9 @@ export class GlobalStage<T extends Record<string, any> = Record<string, any>> {
 				} else {
 					this.handler = Composer.compose([
 						this.handler,
-						...command.middlewares.map((fn) =>
+						...(command.middlewares.map((fn) =>
 							Composer.action(command.triggers, fn)
-						),
+						) as any),
 					]);
 				}
 			});
@@ -103,9 +106,9 @@ export class GlobalStage<T extends Record<string, any> = Record<string, any>> {
 				} else {
 					this.handler = Composer.compose([
 						this.handler,
-						...command.middlewares.map((fn) =>
+						...(command.middlewares.map((fn) =>
 							Composer.hears(command.triggers, fn)
-						),
+						) as any),
 					]);
 				}
 			});
@@ -129,6 +132,15 @@ export class GlobalStage<T extends Record<string, any> = Record<string, any>> {
 					]);
 				}
 			});
+
+			if (scene.enterCommand) {
+				this.handler = Composer.compose([
+					this.handler,
+					Composer.command(scene.enterCommand, async (ctx) => {
+						ctx.scene.enter(scene.sceneName);
+					}),
+				]);
+			}
 		});
 	}
 }

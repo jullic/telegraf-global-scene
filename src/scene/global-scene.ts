@@ -3,17 +3,31 @@ import {
 	Message,
 	Update,
 } from 'telegraf/typings/core/types/typegram';
-import { Guard, MaybeArray } from 'telegraf/typings/util';
 import { IGlobalSceneContext } from './../context/global-context';
-import { Composer, Middleware, NarrowedContext } from 'telegraf';
+import { Composer, Middleware, MiddlewareFn, NarrowedContext } from 'telegraf';
 import { Triggers } from 'telegraf/typings/composer';
-import { FilteredContext } from 'telegraf/typings/context';
-import { UpdateType, MountMap } from 'telegraf/typings/telegram-types';
+import Context, { FilteredContext } from 'telegraf/typings/context';
+import {
+	UpdateType,
+	MountMap,
+	MessageSubType,
+} from 'telegraf/typings/telegram-types';
+import {
+	Guard,
+	MaybeArray,
+	NonemptyReadonlyArray,
+} from 'telegraf/typings/core/helpers/util';
+import { BaseGlobalSceneSessionState } from '../common/types';
+
+type MatchedContext<
+	C extends Context,
+	T extends UpdateType | MessageSubType
+> = NarrowedContext<C, MountMap[T]>;
 
 export type Filter = UpdateType | Guard<Update>;
 
 export interface IGlobalCommand<
-	T extends Record<string, any> = Record<string, any>
+	T extends BaseGlobalSceneSessionState = BaseGlobalSceneSessionState
 > {
 	command: MaybeArray<string>;
 	middlewares: Middleware<
@@ -28,7 +42,7 @@ export interface IGlobalCommand<
 }
 
 export interface IGlobalAction<
-	T extends Record<string, any> = Record<string, any>
+	T extends BaseGlobalSceneSessionState = BaseGlobalSceneSessionState
 > {
 	triggers: Triggers<IGlobalSceneContext<T>>;
 	middlewares: Middleware<
@@ -40,7 +54,7 @@ export interface IGlobalAction<
 }
 
 export interface IGlobalHears<
-	T extends Record<string, any> = Record<string, any>
+	T extends BaseGlobalSceneSessionState = BaseGlobalSceneSessionState
 > {
 	triggers: Triggers<IGlobalSceneContext<T>>;
 	middlewares: Middleware<
@@ -55,7 +69,7 @@ export interface IGlobalHears<
 }
 
 export interface IGlobalOn<
-	T extends Record<string, any> = Record<string, any>
+	T extends BaseGlobalSceneSessionState = BaseGlobalSceneSessionState
 > {
 	filters: any;
 	middlewares: any;
@@ -76,13 +90,16 @@ const defaultOptions = {
 };
 
 export class GlobalScene<
-	T extends Record<string, any> = Record<string, any>
+	T extends BaseGlobalSceneSessionState = BaseGlobalSceneSessionState
 > extends Composer<IGlobalSceneContext<T>> {
 	allCommands: IGlobalCommand<T>[] = [];
 	allActions: IGlobalAction<T>[] = [];
 	allHears: IGlobalHears<T>[] = [];
 	allOns: IGlobalOn<T>[] = [];
 	options: IGlobalSceneOptions;
+	enterHandler: MiddlewareFn<IGlobalSceneContext<T>>;
+	leaveHandler: MiddlewareFn<IGlobalSceneContext<T>>;
+	enterCommand: string | null;
 
 	constructor(
 		public sceneName: string,
@@ -93,6 +110,27 @@ export class GlobalScene<
 			...defaultOptions,
 			...sceneOptions,
 		};
+		this.enterHandler = Composer.compose([]);
+		this.leaveHandler = Composer.compose([]);
+		this.enterCommand = null;
+	}
+
+	leave(...fns: Array<Middleware<IGlobalSceneContext<T>>>) {
+		this.leaveHandler = Composer.compose([this.leaveHandler, ...fns]);
+		return this;
+	}
+
+	leaveMiddleware() {
+		return this.leaveHandler;
+	}
+
+	enter(...fns: Array<Middleware<IGlobalSceneContext<T>>>) {
+		this.enterHandler = Composer.compose([this.enterHandler, ...fns]);
+		return this;
+	}
+
+	enterMiddleware() {
+		return this.enterHandler;
 	}
 
 	command(
@@ -173,78 +211,45 @@ export class GlobalScene<
 		return this;
 	}
 
-	on<Filter extends UpdateType | Guard<Update>>(
+	on<Filter extends UpdateType | Guard<IGlobalSceneContext<T>['update']>>(
 		filters: MaybeArray<Filter>,
-		fns_0: Middleware<FilteredContext<IGlobalSceneContext<T>, Filter>>,
-		...fns_1: Middleware<FilteredContext<IGlobalSceneContext<T>, Filter>>[]
+		...fns: NonemptyReadonlyArray<
+			Middleware<FilteredContext<IGlobalSceneContext<T>, Filter>>
+		>
 	): this;
+
+	/**
+	 * Registers middleware for handling updates narrowed by update types or message subtypes.
+	 * @deprecated Use filter utils instead. Support for Message subtype in `Composer::on` will be removed in Telegraf v5.
+	 */
+	on<Filter extends UpdateType | MessageSubType>(
+		filters: MaybeArray<Filter>,
+		...fns: NonemptyReadonlyArray<
+			Middleware<
+				NarrowedContext<IGlobalSceneContext<T>, MountMap[Filter]>,
+				MountMap[Filter]
+			>
+		>
+	): this;
+
 	on<
 		Filter extends
-			| 'message'
-			| 'poll'
-			| 'callback_query'
-			| 'channel_post'
-			| 'chat_member'
-			| 'chosen_inline_result'
-			| 'edited_channel_post'
-			| 'edited_message'
-			| 'inline_query'
-			| 'my_chat_member'
-			| 'pre_checkout_query'
-			| 'poll_answer'
-			| 'shipping_query'
-			| 'chat_join_request'
-			| 'forward_date'
-			| 'channel_chat_created'
-			| 'chat_shared'
-			| 'connected_website'
-			| 'delete_chat_photo'
-			| 'group_chat_created'
-			| 'invoice'
-			| 'left_chat_member'
-			| 'message_auto_delete_timer_changed'
-			| 'migrate_from_chat_id'
-			| 'migrate_to_chat_id'
-			| 'new_chat_members'
-			| 'new_chat_photo'
-			| 'new_chat_title'
-			| 'passport_data'
-			| 'proximity_alert_triggered'
-			| 'forum_topic_created'
-			| 'forum_topic_closed'
-			| 'forum_topic_reopened'
-			| 'pinned_message'
-			| 'successful_payment'
-			| 'supergroup_chat_created'
-			| 'user_shared'
-			| 'video_chat_scheduled'
-			| 'video_chat_started'
-			| 'video_chat_ended'
-			| 'video_chat_participants_invited'
-			| 'web_app_data'
-			| 'animation'
-			| 'document'
-			| 'has_media_spoiler'
-			| 'audio'
-			| 'contact'
-			| 'dice'
-			| 'game'
-			| 'location'
-			| 'photo'
-			| 'sticker'
-			| 'text'
-			| 'venue'
-			| 'video'
-			| 'video_note'
-			| 'voice'
+			| UpdateType
+			| MessageSubType
+			| Guard<IGlobalSceneContext<T>['update']>
 	>(
 		filters: MaybeArray<Filter>,
-		fns_0: Middleware<
-			NarrowedContext<IGlobalSceneContext<T>, MountMap[Filter]>
-		>,
-		...fns_1: Middleware<
-			NarrowedContext<IGlobalSceneContext<T>, MountMap[Filter]>
-		>[]
+		...fns: NonemptyReadonlyArray<
+			Middleware<
+				Filter extends MessageSubType
+					? MatchedContext<IGlobalSceneContext<T>, Filter>
+					: Filter extends
+							| UpdateType
+							| Guard<IGlobalSceneContext<T>['update']>
+					? FilteredContext<IGlobalSceneContext<T>, Filter>
+					: never
+			>
+		>
 	): this;
 	on(filters: unknown, ...fns: unknown[]): this {
 		this.allOns.push({ filters, middlewares: fns });

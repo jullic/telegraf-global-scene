@@ -1,16 +1,16 @@
 {
-  "name": "telegraf-global-scene",
-  "version": "0.1.0",
-  "description": "Global scene for telegraf",
-  "main": "index.js",
-  "keywords": [
-    "telegraf",
-    "telegram",
-    "scenes"
-  ],
-  "author": "Alexander Lvov",
-  "license": "ISC",
-  "dependencies": {
-    "telegraf": "^4.11.2"
-  }
+	"name": "telegraf-global-scene",
+	"version": "0.5.2",
+	"description": "Global scene for telegraf",
+	"main": "lib/index.js",
+	"keywords": [
+		"telegraf",
+		"telegram",
+		"scenes"
+	],
+	"author": "Alexander Lvov",
+	"license": "ISC",
+	"dependencies": {
+		"telegraf": "^4.16.3"
+	}
 }
